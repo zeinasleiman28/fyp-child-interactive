@@ -1,0 +1,3 @@
+﻿import {readFileSync,writeFileSync} from 'node:fs';
+const p='../scripts/build.sh';let s=readFileSync(p,'utf8');s=s.replace('cp "$project_root/worker/index.js" "$dist_root/server/index.js"','cp "$project_root/worker/index.js" "$dist_root/server/index.js"\ncp "$project_root/worker/agent.js" "$dist_root/server/agent.js"\nprintf \'{"type":"module"}\\n\' > "$dist_root/package.json"');writeFileSync(p,s);
+const v='../scripts/validate-artifact.mjs';s=readFileSync(v,'utf8');s=s.replace('const workerModule = await import(moduleUrl);','const workerModule = await import(pathToFileURL(workerPath).href);');writeFileSync(v,s);

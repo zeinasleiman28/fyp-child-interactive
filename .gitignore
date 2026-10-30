@@ -1,0 +1,11 @@
+﻿dist/
+site.tar.gz
+.env
+.env.*
+!.env.example
+node_modules/
+*.log
+
+# Temporary duplicates produced during scaffolding
+.openai/*.new
+.openai/*.new.*
