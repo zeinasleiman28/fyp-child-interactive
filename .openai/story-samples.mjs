@@ -1,0 +1,3 @@
+﻿import {readFileSync,writeFileSync} from 'node:fs';
+let p='../worker/index.js',s=readFileSync(p,'utf8');s="import { authoredStory } from './stories.js';\n"+s;s=s.replace('  // Safety checks above always run before friendly intent aliases.', "  const sample=authoredStory(message,activity);if(sample)return sample;\n  // Safety checks above always run before friendly intent aliases.");writeFileSync(p,s);
+p='../scripts/build.sh';s=readFileSync(p,'utf8').replace('cp "$project_root/worker/audio.js" "$dist_root/server/audio.js"','cp "$project_root/worker/audio.js" "$dist_root/server/audio.js"\ncp "$project_root/worker/stories.js" "$dist_root/server/stories.js"');writeFileSync(p,s);

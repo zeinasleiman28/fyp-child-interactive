@@ -1,0 +1,3 @@
+﻿import {readFileSync,writeFileSync} from 'node:fs';
+const p='../tests/voice.test.mjs';let s=readFileSync(p,'utf8');s=s.replace('function setup({audio=null,recognition=true,', "function setup({audio=null,mode='curated',recognition=true,").replace('audio:audio||createBrowserAudio(window),onMessage:', 'audio:audio||createBrowserAudio(window),mode,onMessage:');
+s=s.replace('checked replies are spoken with explicit engine labels','checked replies are spoken naturally without repeated engine labels').replace("'Curated demo reply. A towel!'", "'A towel!'").replace("'Live AI reply. Rainbows bend light.'", "'Rainbows bend light.'").replace("'Live AI reply. A checked answer'", "'A checked answer'");writeFileSync(p,s);

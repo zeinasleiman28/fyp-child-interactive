@@ -9,3 +9,4 @@ node_modules/
 # Temporary duplicates produced during scaffolding
 .openai/*.new
 .openai/*.new.*
+.openai/README.*.md

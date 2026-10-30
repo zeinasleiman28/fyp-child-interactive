@@ -5,7 +5,7 @@ const authored=(text,code='safety-boundary',reason='Safety response')=>({text,co
 const blocked=()=>authored('I can help with safe learning and adventures. Let’s try a friendly story or a puzzle instead.');
 export function createAgent({env=process.env,fetchImpl=fetch,now=Date.now,timeoutMs=7000}={}){
  const sessions=new Map();
- async function api(path,body){const r=await fetchImpl('https://api.openai.com/v1/'+path,{method:'POST',headers:{Authorization:'Bearer '+env.OPENAI_API_KEY,'Content-Type':'application/json'},body:JSON.stringify(body),signal:AbortSignal.timeout(timeoutMs)});if(!r.ok)throw Error('provider');return r.json();}
+ async function api(path,body){const r=await fetchImpl('https://api.openai.com/v1/'+path,{method:'POST',headers:{Authorization:'Bearer '+env.OPENAI_API_KEY.trim(),'Content-Type':'application/json'},body:JSON.stringify(body),signal:AbortSignal.timeout(timeoutMs)});if(!r.ok)throw Error('provider');return r.json();}
  async function generate(instructions,input,max=400){const d=await api('responses',{model:env.OPENAI_MODEL||'gpt-4.1-mini',instructions,input,max_output_tokens:max,store:false});if(d.status!=='completed')throw Error('incomplete');const text=d.output?.flatMap(x=>x.type==='message'?(x.content||[]).filter(c=>c.type==='output_text').map(c=>c.text):[]).join('\n');if(typeof text!=='string'||!text.trim())throw Error('empty');return text.trim();}
  async function moderate(text){const d=await api('moderations',{model:'omni-moderation-latest',input:text});if(!Array.isArray(d.results)||d.results.length!==1||typeof d.results[0].flagged!=='boolean')throw Error('moderation');return !d.results[0].flagged;}
  async function review(stage,history,text){const verdict=await generate(REVIEW,[{role:'user',content:JSON.stringify({stage,history,text})}],16);if(!['ALLOW','BLOCK'].includes(verdict))throw Error('review');return verdict==='ALLOW';}
@@ -16,23 +16,23 @@ export function createAgent({env=process.env,fetchImpl=fetch,now=Date.now,timeou
  const cookie=`sprout=${id}; HttpOnly; SameSite=Strict; Path=/; Max-Age=1200${new URL(request.url).protocol==='https:'?'; Secure':''}`;
  if(session.busy)return {status:409,body:{error:'Please wait for your reply.'},cookie};
  session.at=time;
- if(reset){session.history=[];session.activity='';return {body:{ok:true},cookie};}
+ if(reset){session.history=[];session.activity='';session.fallbackUntil=0;return {body:{ok:true},cookie};}
  session.busy=true;
  try{
  const local=converse(data.message);
  const education=/^(what is|what are|why|explain|how does|how do)\b/i.test(data.message)&&/puberty|consent|bullying|sex education|biological sex|immune system|solar system|nervous system/i.test(data.message)&&! /ignore|override|porn|nude|bomb|hack/i.test(data.message);
  const safety=/boundary|support|adult/.test(local.code);
  if(safety&&!education){session.history=[];session.activity='';return {body:{...local,reason:'Safety response'},cookie};}
- if(!env.OPENAI_API_KEY||env.SPROUT_MODE==='curated'){
- const body=education&&/puberty|consent|sex education|biological sex/i.test(data.message)?authored('Growing up brings changes to bodies and feelings. Consent means freely agreeing: you can say no to unwanted touch and tell a trusted grown-up. For body questions, a trusted adult or doctor can explain more.','education','Curated educational reply'):converse(data.message,session.activity);session.activity=['riddle','math'].includes(body.code)?body.code:'';
- return {body:{...body,reason:'Live AI is not configured'},cookie};}
+ if(!env.OPENAI_API_KEY?.trim()||env.SPROUT_MODE==='curated'||time<(session.fallbackUntil||0)){
+ const body=education&&/puberty|consent|sex education|biological sex/i.test(data.message)?authored('Growing up brings changes to bodies and feelings. Consent means freely agreeing: you can say no to unwanted touch and tell a trusted grown-up. For body questions, a trusted adult or doctor can explain more.','education','Curated educational reply'):converse(data.message,session.activity);session.activity=body.activity||'';
+ return {body:{...body,reason:time<(session.fallbackUntil||0)?'Live AI temporarily unavailable':env.SPROUT_MODE==='curated'?'Demo mode selected':'Live AI is not configured'},cookie};}
  const history=session.history;
  if(!await moderate(JSON.stringify({history,message:data.message}))||!await review('input',history,data.message)){session.history=[];return {body:blocked(),cookie};}
  const text=await generate(POLICY,[...history,{role:'user',content:data.message}]);
  if(text.length>1400||!await moderate(text)||!await review('output',[...history,{role:'user',content:data.message}],text)){session.history=[];return {body:blocked(),cookie};}
  session.history=[...history,{role:'user',content:data.message},{role:'assistant',content:text}].slice(-8);
  return {body:{text,code:'conversation',engine:'live-ai',choices:['Start a story','Give me a riddle','Space fact']},cookie};
- }catch{session.history=[];return {body:authored('The live AI garden is resting. This is an authored demo reply, not live AI. We can try a riddle: what gets wetter the more it dries?','service-fallback','Live AI unavailable'),cookie};}
+ }catch{session.history=[];session.fallbackUntil=time+60000;session.activity='riddle';return {body:authored('Let’s try a little puzzle: what gets wetter the more it dries? You can ask for a hint.','service-fallback','Live AI temporarily unavailable'),cookie};}
  finally{session.busy=false;}
  }};
 }
